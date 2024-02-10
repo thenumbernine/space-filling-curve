@@ -60,7 +60,7 @@ end
 local vec2d = require 'vec-ffi.vec2d'
 
 local Curve = class()
-
+Curve.scale = 2		-- how much to scale down per iteration
 
 -- https://en.wikipedia.org/wiki/Z-order_curve
 local ZCurve = Curve:subclass()
@@ -99,7 +99,7 @@ end
 
 -- https://en.wikipedia.org/wiki/L-system
 local RewriteCurve = Curve:subclass()
-RewriteCurve.turnAngle = 90
+RewriteCurve.angle = 90
 RewriteCurve.lengths = {f = 1, g = 1}
 function RewriteCurve:build(iter)
 	local s = self.axiom
@@ -107,7 +107,7 @@ function RewriteCurve:build(iter)
 		s = s:gsub('.', self.rules)
 	end
 	local pts = table()
-	local th = math.rad(self.turnAngle)
+	local th = math.rad(self.angle)
 	local r = vec2d(math.cos(th), math.sin(th))
 	local n = vec2d(1,0)
 	local p = vec2d(0,0)
@@ -162,6 +162,7 @@ end
 -- https://en.wikipedia.org/wiki/L-system
 local KochCurve = RewriteCurve:subclass()
 KochCurve.name = 'Koch curve'
+KochCurve.scale = 3
 KochCurve.axiom = 'f'
 KochCurve.rules = {
 	f = 'f+f-f-f+f',
@@ -171,7 +172,7 @@ KochCurve.rules = {
 -- https://en.wikipedia.org/wiki/L-system
 local SierpinskiTriangle = RewriteCurve:subclass()
 SierpinskiTriangle.name = 'Sierpinski triangle'
-SierpinskiTriangle.turnAngle = 120
+SierpinskiTriangle.angle = 120
 SierpinskiTriangle.axiom = 'f-g-g'
 SierpinskiTriangle.rules = {
 	f = 'f-g+f+g-f',
@@ -181,7 +182,7 @@ SierpinskiTriangle.rules = {
 -- https://en.wikipedia.org/wiki/Sierpi%C5%84ski_curve
 local SierpinskiCurve = RewriteCurve:subclass()
 SierpinskiCurve.name = 'Sierpinski curve'
-SierpinskiCurve.turnAngle = 45
+SierpinskiCurve.angle = 45
 SierpinskiCurve.axiom = 'f--xf--f--xf'
 SierpinskiCurve.rules = {
 	x = 'xf+g+xf--f--xf+g+x',
@@ -195,33 +196,45 @@ SierpinskiSquareCurve.rules = {
 	x = 'xf-f+f-xf+f+xf-f+f-x',
 }
 
--- https://en.wikipedia.org/wiki/L-system
-local SierpinskiArrowHeadCurve = RewriteCurve:subclass()
-SierpinskiArrowHeadCurve.name = 'Sierpinski arrowhead curve'
-SierpinskiArrowHeadCurve.turnAngle = 60
-SierpinskiArrowHeadCurve.axiom = 'f'
-SierpinskiArrowHeadCurve.rules = {
-	f = 'g-f-g',
-	g = 'f+g+f',
-}
-
 -- https://en.wikipedia.org/wiki/Sierpi%C5%84ski_curve
-local SierpinskiArrowHeadCurve2 = RewriteCurve:subclass()
-SierpinskiArrowHeadCurve2.name = 'Sierpinski arrowhead curve 2'
-SierpinskiArrowHeadCurve2.turnAngle = 60
-SierpinskiArrowHeadCurve2.axiom = 'xf'
-SierpinskiArrowHeadCurve2.rules = {
+local SierpinskiArrowHeadCurve = RewriteCurve:subclass()
+SierpinskiArrowHeadCurve.name = 'Sierpinski arrowhead curve 2'
+SierpinskiArrowHeadCurve.angle = 60
+SierpinskiArrowHeadCurve.axiom = 'xf'
+SierpinskiArrowHeadCurve.rules = {
 	x = 'yf+xf+y',
 	y = 'xf-yf-x',
 }
 
+-- https://en.wikipedia.org/wiki/Dragon_curve
 -- https://en.wikipedia.org/wiki/L-system
 local DragonCurve = RewriteCurve:subclass()
 DragonCurve.name = 'Dragon curve'
+DragonCurve.scale = math.sqrt(2)
 DragonCurve.axiom = 'f'
 DragonCurve.rules = {
 	f = 'f+g',
 	g = 'f-g',
+}
+
+-- https://en.wikipedia.org/wiki/Dragon_curve
+local TwinDragonCurve = RewriteCurve:subclass()
+TwinDragonCurve.name = 'Twin Dragon curve'
+TwinDragonCurve.scale = math.sqrt(2)
+TwinDragonCurve.axiom = 'fx+fx+'
+TwinDragonCurve.rules = {
+	x = 'x+yf',
+	y = 'fx-y',
+}
+
+-- https://en.wikipedia.org/wiki/Dragon_curve
+local TerDragonCurve = RewriteCurve:subclass()
+TerDragonCurve.name = 'Terdragon curve'
+TerDragonCurve.scale = 2		-- between 1.7 and 2 ?
+TerDragonCurve.angle = 120
+TerDragonCurve.axiom = 'f'
+TerDragonCurve.rules = {
+	f = 'f+f-f',
 }
 
 local curves = table{
@@ -233,10 +246,11 @@ local curves = table{
 	SierpinskiCurve(),
 	SierpinskiSquareCurve(),
 	SierpinskiArrowHeadCurve(),
-	SierpinskiArrowHeadCurve2(),
 	DragonCurve(),
+	TwinDragonCurve(),
+	TerDragonCurve(),
 	-- PeanoCurve() -- https://en.wikipedia.org/wiki/Peano_curve
-
+	-- OsgoodCurve() -- https://en.wikipedia.org/wiki/Osgood_curve
 }
 local curveNames = curves:mapi(function(c) return c.name end)
 
@@ -258,17 +272,39 @@ function App:initGL(...)
 end
 
 function App:rebuild()
-	self.iter = math.clamp(self.iter, 1, 8)
+	self.iter = math.clamp(self.iter, 1, 16)
 	self.curve = math.clamp(self.curve, 1, #curves)
-	self.path = curves[self.curve]:build(self.iter)
+	local c = curves[self.curve]
+	self.path = c:build(self.iter)
+	-- normalize it here
+	local s = 1 / c.scale^self.iter
+	self.path = self.path:mapi(function(p)
+		return p * s
+	end)
+
+	-- now that we've got the path, calc some stuff on it ...
+	-- for each point, for each other point, what's the distance
+	-- hmm, goes slow...
+	-- and all are basically 0.26+
+	--[[
+	local sum = 0
+	for i=1,#self.path-1 do
+		local p = self.path[i]
+		for j=i+1,#self.path do
+			local q = self.path[j]
+			local dx = p.x - q.x
+			local dy = p.y - q.y
+			sum = sum + math.sqrt(dx*dx + dy*dy)
+		end
+	end
+	self.totalDist = sum / (#self.path)^2
+	--]]
 end
 
 function App:update(...)
 	gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 	gl.glMatrixMode(gl.GL_MODELVIEW)
-	local s = 1 / tonumber(bit.lshift(1, self.iter))
 	gl.glTranslatef(-.5, -.5, 0)
-	gl.glScalef(s, s, 1)
 	self.tex
 		:enable()
 		:bind()
@@ -285,11 +321,14 @@ function App:update(...)
 end
 
 function App:updateGUI()
-	if ig.luatableCombo('curve', self, 'curve', curveNames)
-	or ig.luatableInputInt('iter', self, 'iter')
-	then
+	if ig.luatableCombo('curve', self, 'curve', curveNames) then
+		self.iter = 1
 		self:rebuild()
 	end
+	if ig.luatableInputInt('iter', self, 'iter') then
+		self:rebuild()
+	end
+	ig.igText('total dist: '..tostring(self.totalDist))
 end
 
 function App:event(e, ...)
@@ -297,9 +336,11 @@ function App:event(e, ...)
 	if e.type == sdl.SDL_KEYDOWN then
 		if e.key.keysym.sym == sdl.SDLK_UP then
 			self.curve = self.curve - 1
+			self.iter = 1
 			self:rebuild()
 		elseif e.key.keysym.sym == sdl.SDLK_DOWN then
 			self.curve = self.curve + 1
+			self.iter = 1
 			self:rebuild()
 		elseif e.key.keysym.sym == sdl.SDLK_LEFT then
 			self.iter = self.iter - 1
