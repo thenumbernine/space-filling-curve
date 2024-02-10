@@ -90,15 +90,11 @@ function ZCurve:build(iter)
 	return pts
 end
 
-local HilbertCurve = Curve:subclass()
-HilbertCurve.name = 'Hilbert' 
-function HilbertCurve:build(iter)
-	local s = 'a'
+local RewriteCurve = Curve:subclass()
+function RewriteCurve:build(iter)
+	local s = self.rewriteAxiom
 	for i=0,iter-1 do
-		s = s:gsub('.', {
-			a = '+bf-afa-fb+',
-			b = '-af+bfb+fa-',
-		})
+		s = s:gsub('.', self.rewriteRules)
 	end
 	local pts = table()
 	local n = vec2l(1,0)
@@ -118,10 +114,29 @@ function HilbertCurve:build(iter)
 	return pts
 end
 
+local HilbertCurve = RewriteCurve:subclass()
+HilbertCurve.name = 'Hilbert' 
+HilbertCurve.rewriteAxiom = 'a'
+HilbertCurve.rewriteRules = {
+	a = '+bf-afa-fb+',
+	b = '-af+bfb+fa-',
+}
+
+local MooreCurve = RewriteCurve:subclass()
+MooreCurve.name = 'Moore' 
+MooreCurve.rewriteAxiom = 'lfl+f+lfl'
+MooreCurve.rewriteRules = {
+	l = '-rf+lfl+fr-',
+	r = '+lf-rfr-fl+',
+}
+function MooreCurve:build(iter)
+	return MooreCurve.super.build(self, iter-1)
+end
 
 local curves = table{
-	ZCurve(), -- https://en.wikipedia.org/wiki/Z-order_curve
-	HilbertCurve() -- https://en.wikipedia.org/wiki/Hilbert_curve
+	ZCurve(),			-- https://en.wikipedia.org/wiki/Z-order_curve
+	HilbertCurve(),	 	-- https://en.wikipedia.org/wiki/Hilbert_curve
+	MooreCurve(),		-- https://en.wikipedia.org/wiki/Moore_curve
 	-- PeanoCurve() -- https://en.wikipedia.org/wiki/Peano_curve
 }
 local curveNames = curves:mapi(function(c) return c.name end)
@@ -138,7 +153,7 @@ function App:initGL(...)
 	self.view.orthoSize = 1
 	self.curve = 1
 	self.iter = 1
-	self.tex = require 'gl.hsvtex2d'(256)
+	self.tex = require 'gl.hsvtex2d'(256, nil, true)
 		:unbind()
 	self:rebuild()
 end
