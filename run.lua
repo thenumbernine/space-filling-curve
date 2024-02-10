@@ -1,6 +1,7 @@
 #!/usr/bin/env luajit
 require 'ext'
 local bit = require 'bit'
+local sdl = require 'ffi.req' 'sdl'
 
 -- TODO I competley forgot what I wanted to do with this project
 -- something about average distances between points of space-filling curves
@@ -194,14 +195,33 @@ SierpinskiSquareCurve.rules = {
 	x = 'xf-f+f-xf+f+xf-f+f-x',
 }
 
--- https://en.wikipedia.org/wiki/Sierpi%C5%84ski_curve
+-- https://en.wikipedia.org/wiki/L-system
 local SierpinskiArrowHeadCurve = RewriteCurve:subclass()
 SierpinskiArrowHeadCurve.name = 'Sierpinski arrowhead curve'
 SierpinskiArrowHeadCurve.turnAngle = 60
-SierpinskiArrowHeadCurve.axiom = 'xf'
+SierpinskiArrowHeadCurve.axiom = 'f'
 SierpinskiArrowHeadCurve.rules = {
+	f = 'g-f-g',
+	g = 'f+g+f',
+}
+
+-- https://en.wikipedia.org/wiki/Sierpi%C5%84ski_curve
+local SierpinskiArrowHeadCurve2 = RewriteCurve:subclass()
+SierpinskiArrowHeadCurve2.name = 'Sierpinski arrowhead curve 2'
+SierpinskiArrowHeadCurve2.turnAngle = 60
+SierpinskiArrowHeadCurve2.axiom = 'xf'
+SierpinskiArrowHeadCurve2.rules = {
 	x = 'yf+xf+y',
 	y = 'xf-yf-x',
+}
+
+-- https://en.wikipedia.org/wiki/L-system
+local DragonCurve = RewriteCurve:subclass()
+DragonCurve.name = 'Dragon curve'
+DragonCurve.axiom = 'f'
+DragonCurve.rules = {
+	f = 'f+g',
+	g = 'f-g',
 }
 
 local curves = table{
@@ -213,6 +233,8 @@ local curves = table{
 	SierpinskiCurve(),
 	SierpinskiSquareCurve(),
 	SierpinskiArrowHeadCurve(),
+	SierpinskiArrowHeadCurve2(),
+	DragonCurve(),
 	-- PeanoCurve() -- https://en.wikipedia.org/wiki/Peano_curve
 
 }
@@ -237,6 +259,7 @@ end
 
 function App:rebuild()
 	self.iter = math.clamp(self.iter, 1, 8)
+	self.curve = math.clamp(self.curve, 1, #curves)
 	self.path = curves[self.curve]:build(self.iter)
 end
 
@@ -266,6 +289,25 @@ function App:updateGUI()
 	or ig.luatableInputInt('iter', self, 'iter')
 	then
 		self:rebuild()
+	end
+end
+
+function App:event(e, ...)
+	App.super.event(self, e, ...)
+	if e.type == sdl.SDL_KEYDOWN then
+		if e.key.keysym.sym == sdl.SDLK_UP then
+			self.curve = self.curve - 1
+			self:rebuild()
+		elseif e.key.keysym.sym == sdl.SDLK_DOWN then
+			self.curve = self.curve + 1
+			self:rebuild()
+		elseif e.key.keysym.sym == sdl.SDLK_LEFT then
+			self.iter = self.iter - 1
+			self:rebuild()
+		elseif e.key.keysym.sym == sdl.SDLK_RIGHT then
+			self.iter = self.iter + 1
+			self:rebuild()
+		end
 	end
 end
 
