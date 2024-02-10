@@ -55,12 +55,17 @@ local function hilbert(t,n)
 end
 --]==]
 -- want signedness
-local vec2l = require 'vec-ffi.create_vec2'{ctype='int64_t', suffix='l'}
+--local vec2l = require 'vec-ffi.create_vec2'{ctype='int64_t', suffix='l'}
+local vec2d = require 'vec-ffi.vec2d'
 
 local Curve = class()
 
+
+-- https://en.wikipedia.org/wiki/Z-order_curve
 local ZCurve = Curve:subclass()
-ZCurve.name = 'Z' 
+
+ZCurve.name = 'Z curve' 
+
 function ZCurve:build(iter)
 	local pts = table()
 	local n = bit.lshift(1, bit.lshift(iter, 1))
@@ -85,59 +90,131 @@ function ZCurve:build(iter)
 			bit.band(2^6, bit.rshift(i, 7)),
 			bit.band(2^7, bit.rshift(i, 8))
 		)
-		pts:insert(vec2l(x, y))
+		pts:insert(vec2d(x, y))
 	end
 	return pts
 end
 
+
+-- https://en.wikipedia.org/wiki/L-system
 local RewriteCurve = Curve:subclass()
+RewriteCurve.turnAngle = 90
+RewriteCurve.lengths = {f = 1, g = 1}
 function RewriteCurve:build(iter)
-	local s = self.rewriteAxiom
+	local s = self.axiom
 	for i=0,iter-1 do
-		s = s:gsub('.', self.rewriteRules)
+		s = s:gsub('.', self.rules)
 	end
 	local pts = table()
-	local n = vec2l(1,0)
-	local p = vec2l(0,0)
+	local th = math.rad(self.turnAngle)
+	local r = vec2d(math.cos(th), math.sin(th))
+	local n = vec2d(1,0)
+	local p = vec2d(0,0)
 	pts:insert(p:clone())
 	for i=1,#s do
 		local c = s:sub(i,i)
-		if c == 'f' then
-			p = p + n
-		elseif c == '+' then
-			n.x, n.y = -n.y, n.x
+		local l = self.lengths[c]
+		if l then
+			p = p + l * n
+		end
+		if c == '+' then
+			--n.x, n.y = -n.y, n.x	-- 90' opt
+			n.x, n.y =
+				r.x * n.x - r.y * n.y,
+				r.x * n.y + r.y * n.x
 		elseif c == '-' then
-			n.x, n.y = n.y, -n.x
+			--n.x, n.y = n.y, -n.x
+			n.x, n.y =
+				r.x * n.x + r.y * n.y,
+				r.x * n.y - r.y * n.x
 		end
 		pts:insert(p:clone())
 	end
 	return pts
 end
 
+
+-- https://en.wikipedia.org/wiki/Hilbert_curve
 local HilbertCurve = RewriteCurve:subclass()
-HilbertCurve.name = 'Hilbert' 
-HilbertCurve.rewriteAxiom = 'a'
-HilbertCurve.rewriteRules = {
+HilbertCurve.name = 'Hilbert curve' 
+HilbertCurve.axiom = 'a'
+HilbertCurve.rules = {
 	a = '+bf-afa-fb+',
 	b = '-af+bfb+fa-',
 }
 
+
+-- https://en.wikipedia.org/wiki/Moore_curve
 local MooreCurve = RewriteCurve:subclass()
-MooreCurve.name = 'Moore' 
-MooreCurve.rewriteAxiom = 'lfl+f+lfl'
-MooreCurve.rewriteRules = {
+MooreCurve.name = 'Moore curve' 
+MooreCurve.axiom = 'lfl+f+lfl'
+MooreCurve.rules = {
 	l = '-rf+lfl+fr-',
 	r = '+lf-rfr-fl+',
 }
+-- one iteration off
 function MooreCurve:build(iter)
 	return MooreCurve.super.build(self, iter-1)
 end
 
+
+-- https://en.wikipedia.org/wiki/L-system
+local KochCurve = RewriteCurve:subclass()
+KochCurve.name = 'Koch curve'
+KochCurve.axiom = 'f'
+KochCurve.rules = {
+	f = 'f+f-f-f+f',
+}
+
+
+-- https://en.wikipedia.org/wiki/L-system
+local SierpinskiTriangle = RewriteCurve:subclass()
+SierpinskiTriangle.name = 'Sierpinski triangle'
+SierpinskiTriangle.turnAngle = 120
+SierpinskiTriangle.axiom = 'f-g-g'
+SierpinskiTriangle.rules = {
+	f = 'f-g+f+g-f',
+	g = 'gg',
+}
+
+-- https://en.wikipedia.org/wiki/Sierpi%C5%84ski_curve
+local SierpinskiCurve = RewriteCurve:subclass()
+SierpinskiCurve.name = 'Sierpinski curve'
+SierpinskiCurve.turnAngle = 45
+SierpinskiCurve.axiom = 'f--xf--f--xf'
+SierpinskiCurve.rules = {
+	x = 'xf+g+xf--f--xf+g+x',
+}
+
+-- https://en.wikipedia.org/wiki/Sierpi%C5%84ski_curve
+local SierpinskiSquareCurve = RewriteCurve:subclass()
+SierpinskiSquareCurve.name = 'Sierpinski square curve'
+SierpinskiSquareCurve.axiom = 'f+xf+f+xf'
+SierpinskiSquareCurve.rules = {
+	x = 'xf-f+f-xf+f+xf-f+f-x',
+}
+
+-- https://en.wikipedia.org/wiki/Sierpi%C5%84ski_curve
+local SierpinskiArrowHeadCurve = RewriteCurve:subclass()
+SierpinskiArrowHeadCurve.name = 'Sierpinski arrowhead curve'
+SierpinskiArrowHeadCurve.turnAngle = 60
+SierpinskiArrowHeadCurve.axiom = 'xf'
+SierpinskiArrowHeadCurve.rules = {
+	x = 'yf+xf+y',
+	y = 'xf-yf-x',
+}
+
 local curves = table{
-	ZCurve(),			-- https://en.wikipedia.org/wiki/Z-order_curve
-	HilbertCurve(),	 	-- https://en.wikipedia.org/wiki/Hilbert_curve
-	MooreCurve(),		-- https://en.wikipedia.org/wiki/Moore_curve
+	ZCurve(),
+	HilbertCurve(),
+	MooreCurve(),
+	KochCurve(),
+	SierpinskiTriangle(),
+	SierpinskiCurve(),
+	SierpinskiSquareCurve(),
+	SierpinskiArrowHeadCurve(),
 	-- PeanoCurve() -- https://en.wikipedia.org/wiki/Peano_curve
+
 }
 local curveNames = curves:mapi(function(c) return c.name end)
 
