@@ -1,6 +1,7 @@
 #!/usr/bin/env luajit
-require 'ext'
-local bit = require 'bit'
+local class = require 'ext.class'
+local table = require 'ext.table'
+local math = require 'ext.math'
 local sdl = require 'ffi.req' 'sdl'
 
 -- TODO I competley forgot what I wanted to do with this project
@@ -260,6 +261,8 @@ local App = require 'imguiapp.withorbit'()
 
 App.title = 'space filling curves'
 
+local GLSceneObj = require 'gl.sceneobject'
+
 function App:initGL(...)
 	App.super.initGL(self, ...)
 	self.view.ortho = true
@@ -269,6 +272,41 @@ function App:initGL(...)
 	self.tex = require 'gl.hsvtex2d'(256, nil, true)
 		:unbind()
 	self:rebuild()
+
+	self.so = GLSceneObj{
+		vertexes = {
+			dim = 3,
+			useVec = true,
+		},
+		geometry = {
+			mode = gl.GL_LINE_STRIP,
+		},
+		program = {
+			version = 'latest',
+			vertexCode = [[
+in vec3 vertex;	// z = 1D texcoord
+out float tc;
+uniform mat4 mvProjMat;
+void main() {
+	tc = vertex.z;
+	gl_Position = mvProjMat * vec4(vertex.xy, 0., 1.);
+}
+]],
+			fragmentCode = [[
+in float tc;
+out vec4 fragColor;
+uniform sampler2D tex;
+void main() {
+	fragColor = texture(tex, vec2(tc, .5));
+}
+]],
+			uniforms = {
+				tex = 0,
+			},
+		},
+	}
+	assert(self.so.vertexes)
+	assert(self.so.attrs.vertex)
 end
 
 function App:rebuild()
@@ -303,17 +341,18 @@ end
 
 function App:update(...)
 	gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-	gl.glMatrixMode(gl.GL_MODELVIEW)
-	gl.glTranslatef(-.5, -.5, 0)
 	self.tex
 		:enable()
 		:bind()
-	gl.glBegin(gl.GL_LINE_STRIP)
+
+	self.so.uniforms.mvProjMat = self.view.mvProjMat.ptr
+	self.so:beginUpdate()
+	local vec = self.so.vertexes.vec
 	for i,p in ipairs(self.path) do
-		gl.glTexCoord1f((i-.5)/#self.path)
-		gl.glVertex2f(p:unpack())
+		vec:emplace_back()[0]:set(p.x, p.y, (i-.5)/#self.path)
 	end
-	gl.glEnd()
+	self.so:endUpdate()
+
 	self.tex
 		:unbind()
 		:disable()
@@ -333,19 +372,19 @@ end
 
 function App:event(e, ...)
 	App.super.event(self, e, ...)
-	if e.type == sdl.SDL_KEYDOWN then
-		if e.key.keysym.sym == sdl.SDLK_UP then
+	if e[0].type == sdl.SDL_KEYDOWN then
+		if e[0].key.keysym.sym == sdl.SDLK_UP then
 			self.curve = self.curve - 1
 			self.iter = 1
 			self:rebuild()
-		elseif e.key.keysym.sym == sdl.SDLK_DOWN then
+		elseif e[0].key.keysym.sym == sdl.SDLK_DOWN then
 			self.curve = self.curve + 1
 			self.iter = 1
 			self:rebuild()
-		elseif e.key.keysym.sym == sdl.SDLK_LEFT then
+		elseif e[0].key.keysym.sym == sdl.SDLK_LEFT then
 			self.iter = self.iter - 1
 			self:rebuild()
-		elseif e.key.keysym.sym == sdl.SDLK_RIGHT then
+		elseif e[0].key.keysym.sym == sdl.SDLK_RIGHT then
 			self.iter = self.iter + 1
 			self:rebuild()
 		end
