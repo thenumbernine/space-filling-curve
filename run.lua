@@ -2,7 +2,7 @@
 local class = require 'ext.class'
 local table = require 'ext.table'
 local math = require 'ext.math'
-local sdl = require 'ffi.req' 'sdl'
+local sdl = require 'sdl'
 
 -- TODO I competley forgot what I wanted to do with this project
 -- something about average distances between points of space-filling curves
