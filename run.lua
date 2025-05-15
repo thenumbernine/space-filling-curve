@@ -257,7 +257,7 @@ local curveNames = curves:mapi(function(c) return c.name end)
 
 local gl = require 'gl'
 local ig = require 'imgui'
-local App = require 'imguiapp.withorbit'()
+local App = require 'imgui.appwithorbit'()
 
 App.title = 'space filling curves'
 
