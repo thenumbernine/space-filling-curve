@@ -1,0 +1,11 @@
+name = "space-filling-curve"
+files = {
+	["run.lua"] = "space-filling-curve/run.lua",
+}
+deps = {
+	"ext",
+	"gl",
+	"imgui",
+	"sdl",
+	"vec-ffi",
+}
