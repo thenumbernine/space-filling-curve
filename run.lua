@@ -372,19 +372,19 @@ end
 
 function App:event(e, ...)
 	App.super.event(self, e, ...)
-	if e[0].type == sdl.SDL_KEYDOWN then
-		if e[0].key.keysym.sym == sdl.SDLK_UP then
+	if e[0].type == sdl.SDL_EVENT_KEY_DOWN then
+		if e[0].key.key == sdl.SDLK_UP then
 			self.curve = self.curve - 1
 			self.iter = 1
 			self:rebuild()
-		elseif e[0].key.keysym.sym == sdl.SDLK_DOWN then
+		elseif e[0].key.key == sdl.SDLK_DOWN then
 			self.curve = self.curve + 1
 			self.iter = 1
 			self:rebuild()
-		elseif e[0].key.keysym.sym == sdl.SDLK_LEFT then
+		elseif e[0].key.key == sdl.SDLK_LEFT then
 			self.iter = self.iter - 1
 			self:rebuild()
-		elseif e[0].key.keysym.sym == sdl.SDLK_RIGHT then
+		elseif e[0].key.key == sdl.SDLK_RIGHT then
 			self.iter = self.iter + 1
 			self:rebuild()
 		end
