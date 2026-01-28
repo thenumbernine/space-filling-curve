@@ -1,6 +1,11 @@
-name = "space-filling-curve"
+--------------------------------------------
+-- generated with dist/build-distinfo.rua --
+--------------------------------------------
+
+name = "space_filling_curve"
 files = {
-	["run.lua"] = "space-filling-curve/run.lua",
+	"distinfo",
+	"run.lua",
 }
 deps = {
 	"ext",
